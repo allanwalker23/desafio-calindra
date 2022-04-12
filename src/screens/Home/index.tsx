@@ -1,37 +1,59 @@
 import React, { useState } from 'react';
-import { useEffect } from 'react';
-import {
-    StyleSheet,
-    Text,
-    View,
-    Image,
-    TextInput,
-    FlatList
-} from 'react-native';
+import { StyleSheet, Text, View, TextInput, FlatList } from 'react-native';
 import { Feather, AntDesign } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native-gesture-handler';
-import { Product } from '../../components/Product';
-
+import { Product, Props } from '../../components/Product';
+import { api } from '../../services/api';
+interface ResponseAPI {
+    data: {
+        products: [
+            id: string,
+            name: string,
+            type: string,
+            _meta: {
+                score: number;
+                visitsClickCount: number;
+            }
+        ];
+    };
+}
+interface Product extends Props {
+    id: string;
+}
 export function Home() {
     const [textInputProduct, setTextInputProduct] = useState('');
-    const [haveProducts, setHaveProducts] = useState(true);
+    const [haveProducts, setHaveProducts] = useState(false);
+    const [products, setProducts] = useState<Product[]>([]);
 
-    // useEffect(()=>{
-    //   api.get('/autocomplete?content=sapato&source=nanook').then(response=>{
-    //     console.log(response)
-    //   })
-    // },[]);
+    async function searchProductAPI() {
+        try {
+            const response: ResponseAPI = await api.get(
+                `/autocomplete?content=${textInputProduct.toLowerCase()}&source=nanook`
+            );
 
-    const [products, setProducts] = useState([
-        {
-            id: 1,
-            title: 'Camisa 1'
-        },
-        {
-            id: 2,
-            title: 'Camisa 2'
+            const dataAPI = response.data.products;
+            const productsArray: Product[] = [];
+
+            dataAPI.map(async (product: any) => {
+                const newData: Product = {
+                    title: product.name,
+                    id: product.id,
+                    visits: product._meta.visitsClickCount,
+                    score: product._meta.score,
+                    type: product.type
+                };
+
+                productsArray.push(newData);
+            });
+
+            setProducts(productsArray);
+            setHaveProducts(true);
+        } catch (error) {
+            setProducts([]);
+            setHaveProducts(false);
         }
-    ]);
+    }
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -39,25 +61,28 @@ export function Home() {
                     <TextInput
                         onChangeText={setTextInputProduct}
                         value={textInputProduct}
+                        onBlur={searchProductAPI}
                         placeholder="Busque aqui seu produto"
                         style={{ fontFamily: 'Lato_700Bold' }}
                     />
-                    <TouchableOpacity style={styles.viewIcon}>
+                    <TouchableOpacity
+                        style={styles.viewIcon}
+                        onPress={() => searchProductAPI()}
+                    >
                         <Feather name="search" size={20} color="black" />
                     </TouchableOpacity>
                 </View>
             </View>
-
             {haveProducts ? (
                 <FlatList
                     data={products}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
                         <Product
-                            title="Camisa Polo Branca"
-                            type="Organico"
-                            visits={220}
-                            score={5.0}
+                            title={item.title}
+                            type={item.type}
+                            visits={item.visits}
+                            score={item.score}
                         />
                     )}
                     style={styles.products}
@@ -66,7 +91,9 @@ export function Home() {
                 <View style={styles.productNotExists}>
                     <View style={{ alignItems: 'center' }}>
                         <AntDesign name="rest" size={40} color="black" />
-                        <Text>Nenhum produto aqui</Text>
+                        <Text style={{ fontFamily: 'Lato_700Bold' }}>
+                            Nenhum produto aqui
+                        </Text>
                     </View>
                 </View>
             )}
@@ -83,16 +110,12 @@ const styles = StyleSheet.create({
         paddingTop: 50,
         alignItems: 'center',
         backgroundColor: 'red',
-        height: 90
+        height: 105
     },
     productNotExists: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center'
-    },
-    logo: {
-        width: 350,
-        height: 40
     },
     input: {
         height: 40,
@@ -103,8 +126,8 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         paddingLeft: 10,
         flexDirection: 'row',
-
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        zIndex: 999
     },
     viewIcon: {
         width: 50,
@@ -113,19 +136,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center'
     },
     products: {
-        padding: 30
-    },
-    product: {
-        width: '100%',
-        height: 200,
-        backgroundColor: 'white',
-        borderRadius: 24,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16
-    },
-    imageProduct: {
-        width: 120,
-        height: 120
+        padding: 30,
+        marginBottom: 30
     }
 });
